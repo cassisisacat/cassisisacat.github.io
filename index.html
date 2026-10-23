@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>cass — field notes from code, cinema &amp; ordinary life</title>
+<meta name="description" content="cass：安全分析师、写作者与观察者。关于 SAST、合规、AI 协作研究、写作、日剧与电影，以及一只中华田园猫的个人档案。">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="cass — field notes from code, cinema &amp; ordinary life">
+<meta property="og:description" content="Security analyst. Writer. Observer. A personal archive about risk, systems, stories, and one Chinese rural cat.">
+<meta property="og:url" content="https://cassisisacat.github.io/">
+<meta property="og:image" content="https://cassisisacat.github.io/assets/og-cover.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#F4F0E8">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="[https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital](https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital),wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@300;400;500&family=Noto+Serif+SC:wght@400;600&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23F4F0E8'/%3E%3Ctext y='73' x='50' text-anchor='middle' font-family='Georgia,serif' font-size='62' fill='%23A84735'%3Ec%3C/text%3E%3C/svg%3E">
+
+<style>
+/* ── Tokens ─────────────────────────────────────────── */
+:root{
+  --paper:#F4F0E8;
+  --paper-deep:#E9E1D4;
+  --ink:#191817;
+  --ink-soft:#5D5952;
+  --line:#C9C0B4;
+  --line-strong:#9E9484;
+  --vermilion:#A84735;
+  --sage:#77866E;
+  --cat-orange:#C7783C;
+  --night:#242321;
+  --night-deep:#1B1A18;
+  --paper-on-night:#F4F0E8;
+  --ink-soft-on-night:#B4AC9E;
+  --vermilion-light:#E39373;
+  --line-on-night:#3C3A35;
+
+  --font-display:'Cormorant Garamond','Noto Serif SC',Georgia,serif;
+  --font-body:'Noto Sans SC','Helvetica Neue',Arial,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+
+  --text-hero:clamp(3rem,9vw,7.5rem);
+  --text-h2:clamp(2.1rem,5.5vw,4.5rem);
+  --text-h3:clamp(1.5rem,2.6vw,2.25rem);
+  --text-lead:clamp(1.05rem,1.6vw,1.3rem);
+  --text-body:1.0625rem;
+  --text-meta:0.78rem;
+
+  --pad-section:clamp(4.5rem,12vw,10rem);
+  --container:1180px;
+  --gap:clamp(1.25rem,3vw,2.25rem);
+  --t-fast:0.28s cubic-bezier(.4,0,.2,1);
+  --t-slow:0.7s cubic-bezier(.2,.7,.2,1);
+}
+
+/* ── Reset / Base ───────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--font-body);
+  font-size:var(--text-body);
+  font-weight:300;
+  line-height:1.75;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+img,svg{max-width:100%;display:block}
+h1,h2,h3,h4,p,figure,ul,ol{margin:0}
+ul,ol{padding:0;list-style:none}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+:focus-visible{outline:2px solid var(--vermilion);outline-offset:3px;border-radius:2px}
+
+.container{width:min(100% - 2.5rem,var(--container));margin-inline:auto}
+.mono{font-family:var(--font-mono);font-size:var(--text-meta);letter-spacing:.14em;text-transform:uppercase}
+.skip{position:absolute;left:-9999px;top:0;z-index:999;background:var(--ink);color:var(--paper);padding:.75rem 1.25rem}
+.skip:focus{left:1rem;top:1rem}
+
+/* ── Masthead / Nav ─────────────────────────────────── */
+.masthead{
+  position:fixed;inset:0 0 auto 0;z-index:100;
+  padding:clamp(1rem,2.5vw,1.75rem) 0;
+  transition:padding var(--t-fast),background var(--t-fast),box-shadow var(--t-fast);
+}
+.masthead--scrolled{
+  padding:.6rem 0;
+  background:rgba(244,240,232,.92);
+  backdrop-filter:blur(10px);
+  box-shadow:inset 0 -1px 0 var(--line);
+}
+.masthead__inner{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.masthead__mark{font-family:var(--font-display);font-size:clamp(1.5rem,3vw,2rem);font-weight:600;letter-spacing:.02em}
+.masthead__mark .dot{color:var(--vermilion)}
+.nav__list{display:flex;align-items:baseline;gap:clamp(1rem,2.4vw,2.1rem)}
+.nav__link{
+  position:relative;font-family:var(--font-mono);font-size:.72rem;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);
+  padding:.35rem 0;transition:color var(--t-fast);
+}
+.nav__link::after{
+  content:"";position:absolute;left:0;right:0;bottom:0;height:1px;
+  background:var(--vermilion);transform:scaleX(0);transform-origin:left;
+  transition:transform var(--t-fast);
+}
+.nav__link:hover,.nav__link:focus-visible{color:var(--ink)}
+.nav__link:hover::after,.nav__link:focus-visible::after{transform:scaleX(1)}
+.nav__link[aria-current="true"]{color:var(--vermilion)}
+.nav__link[aria-current="true"]::after{transform:scaleX(1)}
+.nav__toggle{display:none;font-family:var(--font-mono);font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;border:1px solid var(--line-strong);padding:.5rem .8rem}
+
+/* ── Hero ───────────────────────────────────────────── */
+.hero{padding:clamp(8rem,18vw,12rem) 0 var(--pad-section);position:relative}
+.hero__rule{display:flex;justify-content:space-between;gap:1rem;border-top:1px solid var(--ink);border-bottom:1px solid var(--line);padding:.5rem 0;color:var(--ink-soft)}
+.hero__statement{
+  font-family:var(--font-display);font-size:var(--text-hero);line-height:.95;
+  font-weight:500;letter-spacing:-.015em;margin-top:clamp(2rem,7vw,4.5rem);
+  max-width:20ch;
+}
+.hero__statement em{font-style:italic;color:var(--vermilion)}
+.hero__zh{font-family:var(--font-display);font-size:clamp(1.1rem,2.2vw,1.6rem);color:var(--ink-soft);margin-top:1.5rem;letter-spacing:.04em}
+.hero__meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--gap);margin-top:clamp(2.5rem,6vw,4rem);padding-top:1.25rem;border-top:1px solid var(--line)}
+.hero__meta dt{font-family:var(--font-mono);font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft)}
+.hero__meta dd{margin:.4rem 0 0;font-size:.95rem}
+.status{color:var(--sage)}
+.status__caret{display:inline-block;width:.55ch;background:var(--sage);animation:blink 1.1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+.hero__actions{display:flex;flex-wrap:wrap;align-items:center;gap:1rem;margin-top:clamp(2.5rem,6vw,3.5rem)}
+.btn{
+  display:inline-flex;align-items:center;gap:.6rem;
+  font-family:var(--font-mono);font-size:.74rem;letter-spacing:.16em;text-transform:uppercase;
+  padding:.85rem 1.5rem;border:1px solid var(--ink);background:var(--ink);color:var(--paper);
+  transition:background var(--t-fast),color var(--t-fast),transform var(--t-fast);
+}
+.btn:hover,.btn:focus-visible{background:var(--vermilion);border-color:var(--vermilion);transform:translateY(-2px)}
+.btn--ghost{background:transparent;color:var(--ink)}
+.btn--ghost:hover,.btn--ghost:focus-visible{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn--dark{background:transparent;border-color:var(--line-on-night);color:var(--paper-on-night)}
+.btn--dark:hover,.btn--dark:focus-visible{background:var(--paper-on-night);color:var(--night);border-color:var(--paper-on-night)}
+
+.paw{
+  position:absolute;right:clamp(1rem,4vw,3.5rem);bottom:clamp(2rem,5vw,3rem);
+  width:58px;height:58px;border-radius:50%;display:grid;place-items:center;
+  transition:transform var(--t-slow),opacity var(--t-fast);opacity:.55;
+}
+.paw:hover,.paw:focus-visible{transform:rotate(-12deg) scale(1.12);opacity:1}
+.paw svg{width:26px;height:26px;fill:var(--cat-orange)}
+.paw-note{
+  position:absolute;right:0;bottom:calc(100% + .75rem);width:min(300px,72vw);
+  background:var(--night);color:var(--paper-on-night);padding:.9rem 1.1rem;
+  font-family:var(--font-display);font-size:1.05rem;line-height:1.5;
+  opacity:0;visibility:hidden;transform:translateY(6px);
+  transition:opacity var(--t-fast),transform var(--t-fast),visibility var(--t-fast);
+}
+.paw-note[data-open="true"]{opacity:1;visibility:visible;transform:translateY(0)}
+
+/* ── Section shell ──────────────────────────────────── */
+.section{padding:var(--pad-section) 0;scroll-margin-top:6rem}
+.section--tint{background:var(--paper-deep)}
+.section--night{background:var(--night);color:var(--paper-on-night)}
+.section__head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:1rem;border-bottom:1px solid var(--line);padding-bottom:1rem;margin-bottom:clamp(2rem,5vw,3.5rem)}
+.section--night .section__head{border-color:var(--line-on-night)}
+.section__no{font-family:var(--font-mono);font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--vermilion);display:block;margin-bottom:.6rem}
+.section__title{font-family:var(--font-display);font-size:var(--text-h2);line-height:1;font-weight:500;letter-spacing:-.01em}
+.section__title small{display:block;font-family:var(--font-body);font-size:.85rem;font-weight:400;color:var(--ink-soft);letter-spacing:.08em;margin-top:.7rem}
+.section--night .section__title small{color:var(--ink-soft-on-night)}
+.section__aside{max-width:34ch;font-size:.9rem;color:var(--ink-soft)}
+.section--night .section__aside{color:var(--ink-soft-on-night)}
+
+/* ── NOW ────────────────────────────────────────────── */
+.now__grid{display:grid;gap:1px;background:var(--line);border:1px solid var(--line)}
+.now-item{background:var(--paper);position:relative}
+.now-item__btn{
+  width:100%;display:grid;grid-template-columns:auto 1fr auto;align-items:baseline;gap:1rem;
+  text-align:left;padding:clamp(1.25rem,3vw,1.9rem) clamp(1.25rem,3vw,2.25rem);
+  transition:background var(--t-fast);
+}
+.now-item__btn:hover,.now-item__btn:focus-visible{background:var(--paper-deep)}
+.now-item__no{font-family:var(--font-mono);font-size:.72rem;color:var(--vermilion);letter-spacing:.12em}
+.now-item__label{font-family:var(--font-display);font-size:clamp(1.3rem,2.6vw,1.9rem);font-weight:500;line-height:1.2}
+.now-item__label span{font-family:var(--font-body);font-size:.8rem;font-weight:400;color:var(--ink-soft);margin-left:.6rem;letter-spacing:.06em}
+.now-item__sign{font-family:var(--font-mono);font-size:1.1rem;color:var(--ink-soft);transition:transform var(--t-fast)}
+.now-item[data-open="true"] .now-item__sign{transform:rotate(45deg);color:var(--vermilion)}
+.now-item__body{
+  display:grid;grid-template-rows:0fr;transition:grid-template-rows var(--t-slow);
+}
+.now-item[data-open="true"] .now-item__body{grid-template-rows:1fr}
+.now-item__body>div{overflow:hidden}
+.now-item__inner{padding:0 clamp(1.25rem,3vw,2.25rem) clamp(1.4rem,3vw,2rem);max-width:70ch}
+.now-item__inner p{color:var(--ink-soft);font-size:.98rem}
+.now-item__inner p + p{margin-top:.8rem}
+.now-item__tag{display:inline-block;margin-top:1.1rem;font-family:var(--font-mono);font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--sage);border:1px solid var(--line-strong);padding:.3rem .6rem}
+.now-item[data-open="true"]{box-shadow:inset 3px 0 0 var(--vermilion)}
+
+/* ── WRITING ────────────────────────────────────────── */
+.texts{border-top:1px solid var(--line)}
+.text-row{position:relative;border-bottom:1px solid var(--line)}
+.text-row__link{
+  display:grid;grid-template-columns:3.5rem minmax(0,1fr) auto;align-items:baseline;gap:1.25rem;
+  padding:clamp(1.4rem,3.5vw,2.2rem) 0;transition:padding-inline var(--t-fast);
+}
+.text-row:hover .text-row__link,.text-row:focus-within .text-row__link{padding-inline:.85rem}
+.text-row__no{font-family:var(--font-mono);font-size:.72rem;color:var(--line-strong);letter-spacing:.1em}
+.text-row__title{font-family:var(--font-display);font-size:clamp(1.4rem,3.2vw,2.25rem);font-weight:500;line-height:1.25;transition:color var(--t-fast)}
+.text-row__kind{font-family:var(--font-mono);font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin-top:.5rem}
+.text-row__go{font-family:var(--font-mono);font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--vermilion);white-space:nowrap;opacity:0;transform:translateX(-6px);transition:opacity var(--t-fast),transform var(--t-fast)}
+.text-row:hover .text-row__go,.text-row:focus-within .text-row__go{opacity:1;transform:translateX(0)}
+.text-row--soon .text-row__title{color:var(--line-strong)}
+.text-row__excerpt{
+  max-height:0;overflow:hidden;color:var(--ink-soft);font-size:.95rem;max-width:62ch;
+  transition:max-height var(--t-slow),margin var(--t-slow);
+}
+.text-row:hover .text-row__excerpt,.text-row:focus-within .text-row__excerpt{max-height:8rem;margin-top:.85rem}
+.texts__foot{display:flex;flex-wrap:wrap;gap:1rem;align-items:center;justify-content:space-between;margin-top:2.5rem;font-size:.9rem;color:var(--ink-soft)}
+
+/* ── SCREEN ─────────────────────────────────────────── */
+.filters{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:clamp(1.75rem,4vw,2.75rem)}
+.filter{
+  font-family:var(--font-mono);font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;
+  border:1px solid var(--line-on-night);padding:.5rem .95rem;color:var(--ink-soft-on-night);
+  transition:color var(--t-fast),border-color var(--t-fast),background var(--t-fast);
+}
+.filter:hover,.filter:focus-visible{color:var(--paper-on-night);border-color:var(--paper-on-night)}
+.filter[aria-pressed="true"]{background:var(--paper-on-night);color:var(--night);border-color:var(--paper-on-night)}
+.screens{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,270px),1fr));gap:1px;background:var(--line-on-night);border:1px solid var(--line-on-night)}
+.screen-card{
+  background:var(--night);padding:clamp(1.4rem,3vw,1.9rem);position:relative;
+  display:flex;flex-direction:column;gap:.45rem;min-height:230px;
+  transition:opacity var(--t-fast),transform var(--t-fast),background var(--t-fast);
+}
+.screen-card::before{content:"";position:absolute;inset:auto auto 0 0;width:100%;height:2px;background:var(--vermilion-light);transform:scaleX(0);transform-origin:left;transition:transform var(--t-slow)}
+.screen-card:hover,.screen-card:focus-within{background:var(--night-deep)}
+.screen-card:hover::before,.screen-card:focus-within::before{transform:scaleX(1)}
+.screen-card[hidden]{display:none}
+.screen-card__kind{font-family:var(--font-mono);font-size:.64rem;letter-spacing:.16em;text-transform:uppercase;color:var(--vermilion-light)}
+.screen-card__title{font-family:var(--font-display);font-size:clamp(1.5rem,2.8vw,2rem);font-weight:500;line-height:1.2;margin-top:.35rem}
+.screen-card__orig{font-size:.82rem;color:var(--ink-soft-on-night);letter-spacing:.04em}
+.screen-card__year{font-family:var(--font-mono);font-size:.66rem;letter-spacing:.12em;color:var(--ink-soft-on-night)}
+.screen-card__note{margin-top:auto;padding-top:1rem;font-size:.9rem;line-height:1.65;color:var(--paper-on-night)}
+.screen-card__note span{font-family:var(--font-display);font-style:italic;color:var(--vermilion-light)}
+
+/* ── SKILLS ─────────────────────────────────────────── */
+.skills__grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:var(--gap)}
+.skill-set{border-top:2px solid var(--ink);padding-top:1.25rem;transition:transform var(--t-fast)}
+.skill-set:hover,.skill-set:focus-within{transform:translateY(-4px)}
+.skill-set__name{font-family:var(--font-display);font-size:clamp(1.6rem,3vw,2.1rem);font-weight:600;line-height:1}
+.skill-set__zh{font-family:var(--font-mono);font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--vermilion);margin-top:.5rem}
+.skill-set__desc{font-size:.88rem;color:var(--ink-soft);margin-top:.85rem;min-height:3.2em}
+.skill-set__list{margin-top:1.25rem;display:flex;flex-wrap:wrap;gap:.4rem}
+.skill-set__list li{font-family:var(--font-mono);font-size:.68rem;letter-spacing:.06em;border:1px solid var(--line-strong);padding:.32rem .6rem;color:var(--ink);transition:background var(--t-fast),color var(--t-fast),border-color var(--t-fast)}
+.skill-set__list li:hover{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.skill-set:nth-child(2) .skill-set__zh{color:var(--sage)}
+.skill-set:nth-child(3) .skill-set__zh{color:var(--vermilion)}
+.skill-set:nth-child(4) .skill-set__zh{color:var(--cat-orange)}
+
+/* ── ABOUT ──────────────────────────────────────────── */
+.about__grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:clamp(2rem,6vw,4.5rem);align-items:start}
+.about__lead{font-family:var(--font-display);font-size:clamp(1.5rem,3vw,2.1rem);line-height:1.35;font-weight:400}
+.about__lead::first-letter{float:left;font-size:clamp(3.5rem,7vw,5.5rem);line-height:.8;padding:.1em .12em 0 0;color:var(--vermilion);font-weight:600}
+.about__en{margin-top:1.75rem;max-width:60ch;color:var(--ink-soft)}
+.about__zh{margin-top:1.5rem;max-width:52ch;font-size:.98rem;color:var(--ink-soft);border-left:2px solid var(--line-strong);padding-left:1.15rem}
+.about__side{border:1px solid var(--line);padding:clamp(1.25rem,3vw,1.75rem);background:var(--paper-deep)}
+.about__side h3{font-family:var(--font-mono);font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);font-weight:400}
+.colophon{margin-top:1rem;display:grid;gap:.7rem;font-size:.9rem}
+.colophon div{display:flex;justify-content:space-between;gap:1rem;border-bottom:1px dotted var(--line-strong);padding-bottom:.55rem}
+.colophon dt{font-family:var(--font-mono);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft)}
+.colophon dd{margin:0;text-align:right}
+.frame{aspect-ratio:4/5;border:1px solid var(--line-strong);display:grid;place-content:center;text-align:center;gap:.5rem;margin-bottom:1.25rem;background:var(--paper);padding:1rem}
+.frame svg{width:44px;height:44px;fill:var(--cat-orange);margin-inline:auto;opacity:.75}
+.frame p{font-family:var(--font-mono);font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);line-height:1.7}
+
+/* ── Contact / Footer ───────────────────────────────── */
+.contact{text-align:left}
+.contact__mail{
+  display:inline-block;font-family:var(--font-display);font-size:clamp(1.8rem,6vw,4.5rem);
+  font-weight:500;line-height:1;border-bottom:1px solid var(--line-on-night);
+  padding-bottom:.35rem;transition:color var(--t-fast),border-color var(--t-fast)
+}
+.contact__mail:hover,.contact__mail:focus-visible{color:var(--vermilion-light);border-color:var(--vermilion-light)}
+.contact__hint{margin-top:1.5rem;color:var(--ink-soft-on-night);max-width:46ch;font-size:.95rem}
+.footer{padding:clamp(2.5rem,6vw,4rem) 0;border-top:1px solid var(--line)}
+.footer__grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:var(--gap);align-items:start}
+.footer__links{display:grid;gap:.55rem;font-size:.9rem}
+.footer__links a{border-bottom:1px solid transparent;transition:color var(--t-fast),border-color var(--t-fast)}
+.footer__links a:hover,.footer__links a:focus-visible{color:var(--vermilion);border-color:var(--vermilion)}
+.footer__note{margin-top:clamp(2rem,5vw,3rem);padding-top:1.25rem;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:1rem;justify-content:space-between;color:var(--ink-soft);font-size:.8rem}
+.footer__cat{font-family:var(--font-display);font-style:italic;font-size:1.05rem;color:var(--cat-orange)}
+
+/* ── Reveal ─────────────────────────────────────────── */
+.reveal{opacity:0;transform:translateY(22px);transition:opacity var(--t-slow) ease,transform var(--t-slow) ease;transition-delay:calc(var(--i,0) * 70ms)}
+.reveal.is-in{opacity:1;transform:none}
+
+/* ── Responsive ─────────────────────────────────────── */
+@media (max-width:900px){
+  .about__grid{grid-template-columns:1fr}
+  .about__side{order:-1}
+  .frame{aspect-ratio:16/9}
+}
+@media (max-width:760px){
+  .nav__toggle{display:inline-block}
+  .nav__list{
+    position:fixed;inset:0 0 auto 0;top:0;padding:5.5rem 1.25rem 2rem;
+    flex-direction:column;align-items:flex-start;gap:1.25rem;
+    background:var(--paper);box-shadow:0 1px 0 var(--line);
+    transform:translateY(-102%);transition:transform var(--t-fast);
+  }
+  .nav__list[data-open="true"]{transform:translateY(0)}
+  .nav__link{font-size:1rem}
+  .text-row__link{grid-template-columns:2.2rem minmax(0,1fr);row-gap:.35rem}
+  .text-row__go{grid-column:2;margin-top:.5rem;opacity:1;transform:none}
+  .text-row__excerpt{max-height:none;margin-top:.75rem}
+  .hero__rule .mono:last-child{display:none}
+  .now-item__btn{grid-template-columns:auto 1fr auto;gap:.75rem}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  .reveal{opacity:1;transform:none}
+  .status__caret{animation:none}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#" onclick="event.preventDefault();scrollToSection('main')">跳到主要内容</a>
+
+<header class="masthead" id="masthead">
+  <div class="container masthead__inner">
+    <span class="masthead__mark">cass<span class="dot">.</span></span>
+    <nav aria-label="主导航">
+      <button class="nav__toggle" id="navToggle" aria-expanded="false" aria-controls="navList">Menu</button>
+      <ul class="nav__list" id="navList">
+        <li><a class="nav__link" href="#" data-target="now" onclick="event.preventDefault();navGo('now')">Now</a></li>
+        <li><a class="nav__link" href="#" data-target="writing" onclick="event.preventDefault();navGo('writing')">Writing</a></li>
+        <li><a class="nav__link" href="#" data-target="screen" onclick="event.preventDefault();navGo('screen')">Screen</a></li>
+        <li><a class="nav__link" href="#" data-target="skills" onclick="event.preventDefault();navGo('skills')">Skills</a></li>
+        <li><a class="nav__link" href="#" data-target="about" onclick="event.preventDefault();navGo('about')">About</a></li>
+        <li><a class="nav__link" href="https://t.me/minecassis" target="_blank" rel="noopener noreferrer">Telegram ↗</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- HERO -->
+  <section class="hero" id="home" aria-labelledby="heroTitle">
+    <div class="container">
+      <div class="hero__rule">
+        <p class="mono">Security Analyst · Writer · Observer</p>
+        <p class="mono">Vol. 01 — 2026</p>
+      </div>
+
+      <h1 class="hero__statement" id="heroTitle">I read systems, stories, <em>and the spaces between them.</em></h1>
+      <p class="hero__zh">我阅读系统、故事，以及它们之间的空白。</p>
+
+      <dl class="hero__meta">
+        <div>
+          <dt>Currently</dt>
+          <dd class="status" id="statusLine" aria-live="polite">loading<span class="status__caret" aria-hidden="true">&nbsp;</span></dd>
+        </div>
+        <div>
+          <dt>Background</dt>
+          <dd>Finance &amp; Law → Security</dd>
+        </div>
+        <div>
+          <dt>Household</dt>
+          <dd>一只炸毛的中华田园猫</dd>
+        </div>
+        <div>
+          <dt>Archive</dt>
+          <dd><a href="https://t.me/minecassis" target="_blank" rel="noopener noreferrer">t.me/minecassis ↗</a></dd>
+        </div>
+      </dl>
+
+      <div class="hero__actions">
+        <a class="btn" href="#" onclick="event.preventDefault();scrollToSection('now')">Enter the archive ↓</a>
+        <a class="btn btn--ghost" href="#" onclick="event.preventDefault();scrollToSection('writing')">Read the essays</a>
+      </div>
+    </div>
+
+    <button class="paw" id="paw" type="button" aria-label="猫爪彩蛋：点一下看看圆圆说什么">
+      <span class="paw-note" id="pawNote" data-open="false" role="status"></span>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="7" cy="6.5" rx="2" ry="2.6"/><ellipse cx="12" cy="5" rx="2" ry="2.7"/><ellipse cx="17" cy="6.5" rx="2" ry="2.6"/><path d="M12 10c3.2 0 6 2.6 6 5.2 0 2.3-1.9 3.3-3.8 2.6-1.4-.5-3-.5-4.4 0-1.9.7-3.8-.3-3.8-2.6C6 12.6 8.8 10 12 10z"/></svg>
+    </button>
+  </section>
+
+  <!-- NOW -->
+  <section class="section section--tint" id="now" aria-labelledby="nowTitle">
+    <div class="container">
+      <div class="section__head">
+        <div>
+          <p class="section__no">§ 01 — Current Issue</p>
+          <h2 class="section__title" id="nowTitle">Now<small>我此刻正在做的事情</small></h2>
+        </div>
+        <p class="section__aside">Not a résumé. A working list of what is currently occupying my attention, updated whenever the issue changes.</p>
+      </div>
+
+      <div class="now__grid" id="nowList">
+        <article class="now-item" data-open="true">
+          <h3 style="margin:0">
+            <button class="now-item__btn" type="button" aria-expanded="true" aria-controls="now1">
+              <span class="now-item__no">01</span>
+              <span class="now-item__label">SAST Analyst<span>安全分析</span></span>
+              <span class="now-item__sign" aria-hidden="true">+</span>
+            </button>
+          </h3>
+          <div class="now-item__body" id="now1"><div><div class="now-item__inner">
+            <p>Static application security testing: reading other people's code for a living, finding the places where intent and implementation diverge, and deciding which findings are actually worth a developer's afternoon.</p>
+            <p>大部分工作不是"发现漏洞"，而是让风险变成一个可以被工程团队理解和执行的句子。</p>
+            <p class="mono" style="color:var(--ink-soft);margin-top:1rem">Tools · scanning · triage · developer conversations</p>
+          </div></div></div>
+        </article>
+
+        <article class="now-item">
+          <h3 style="margin:0">
+            <button class="now-item__btn" type="button" aria-expanded="false" aria-controls="now2">
+              <span class="now-item__no">02</span>
+              <span class="now-item__label">Compliance Operations<span>合规运营</span></span>
+              <span class="now-item__sign" aria-hidden="true">+</span>
+            </button>
+          </h3>
+          <div class="now-item__body" id="now2"><div><div class="now-item__inner">
+            <p>Living in the gap between what a policy says and what actually happens on a Tuesday afternoon. Rules, evidence, process design, and the slow work of making controls feel less like theatre.</p>
+            <p>法律训练留给我的习惯：不追问"有没有写"，而追问"谁在什么时候、以什么方式执行它"。</p>
+            <p class="mono" style="color:var(--ink-soft);margin-top:1rem">Policy ↔ practice · evidence · coordination</p>
+          </div></div></div>
+        </article>
+
+        <article class="now-item">
+          <h3 style="margin:0">
+            <button class="now-item__btn" type="button" aria-expanded="false" aria-controls="now3">
+              <span class="now-item__no">03</span>
+              <span class="now-item__label">AI-Assisted Group Work<span>研究项目</span></span>
+              <span class="now-item__sign" aria-hidden="true">+</span>
+            </button>
+          </h3>
+          <div class="now-item__body" id="now3"><div><div class="now-item__inner">
+            <p>A research project on AI-assisted group assignments: what happens to authorship, free-riding, and trust when everyone on the team has the same silent collaborator.</p>
+            <p>有意思的问题不是"AI 能不能写得更好"，而是当写作过程变得不透明之后，小组如何重新分配信用与责任。</p>
+            <p class="mono" style="color:var(--ink-soft);margin-top:1rem">Collaboration · authorship · learning</p>
+          </div></div></div>
+        </article>
+
+        <article class="now-item">
+          <h3 style="margin:0">
+            <button class="now-item__btn" type="button" aria-expanded="false" aria-controls="now4">
+              <span class="now-item__no">04</span>
+              <span class="now-item__label">Counselling<span>心理咨询 · ongoing</span></span>
+              <span class="now-item__sign" aria-hidden="true">+</span>
+            </button>
+          </h3>
+          <div class="now-item__body" id="now4"><div><div class="now-item__inner">
+            <p>I'm in counselling. It is an ongoing practice of understanding myself with more honesty and less performance — noticing which patterns I keep describing as personality and which ones are just unfinished.</p>
+            <p>这里只写状态，不写内容。有些进展属于椅子上的五十分钟，不属于一个公开网页。</p>
+            <p class="mono" style="color:var(--ink-soft);margin-top:1rem">Self-work · honesty · unfinished business</p>
+          </div></div></div>
+        </article>
+
+        <article class="now-item">
+          <h3 style="margin:0">
+            <button class="now-item__btn" type="button" aria-expanded="false" aria-controls="now5">
+              <span class="now-item__no">05</span>
+              <span class="now-item__label">Writing &amp; Watching<span>写作与观看</span></span>
+              <span class="now-item__sign" aria-hidden="true">+</span>
+            </button>
+          </h3>
+          <div class="now-item__body" id="now5"><div><div class="now-item__inner">
+            <p>Essays in Chinese, filed to my Telegram channel; Japanese dramas and films that keep ending up in the same paragraph as work thoughts.</p>
+            <p>下一步打算把这一期的内容整理进网站，而不是永远停在"链接在别处"。</p>
+            <p class="mono" style="color:var(--ink-soft);margin-top:1rem">Telegraph · Telegram · rewatch list</p>
+          </div></div></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- WRITING -->
+  <section class="section" id="writing" aria-labelledby="writingTitle">
+    <div class="container">
+      <div class="section__head">
+        <div>
+          <p class="section__no">§ 02 — Selected Texts</p>
+          <h2 class="section__title" id="writingTitle">Writing<small>文章档案</small></h2>
+        </div>
+        <p class="section__aside">Mostly nights out, cities, and the exact moment a story stops being amusing and starts being about me.</p>
+      </div>
+
+      <div class="texts">
+        <article class="text-row">
+          <a class="text-row__link" href="https://telegra.ph/%E4%BA%9A%E9%80%BC%E6%92%9E%E8%BD%A6%E6%96%AF%E5%BE%B7%E5%93%A5%E5%B0%94%E6%91%A9-12-07" target="_blank" rel="noopener noreferrer">
+            <span class="text-row__no">01</span>
+            <span>
+              <span class="text-row__title">亚逼、撞车、斯德哥尔摩</span>
+              <span class="text-row__kind">Essay · 2025.12.07 · Telegraph</span>
+              <span class="text-row__excerpt">一次非常不典型的约会：醉到只记得专场名字、优衣库导致排号消失、心理咨询师在交友软件上发掘客户、改装 SUV 关掉车身稳定系统，以及在某个路口冷静地撞上绿化带。人的风险模型什么时候会突然失效——包括我自己的。</span>
+            </span>
+            <span class="text-row__go">Read ↗</span>
+          </a>
+        </article>
+
+        <article class="text-row text-row--soon">
+          <div class="text-row__link" role="group" aria-label="第二篇：待发布">
+            <span class="text-row__no">02</span>
+            <span>
+              <span class="text-row__title">下一期 · 待发布</span>
+              <span class="text-row__kind">Essay / Notes · in progress</span>
+              <span class="text-row__excerpt">草稿已经在 Telegram 频道里断断续续出现；发布后会同步到这里。</span>
+            </span>
+            <span class="text-row__go">Soon</span>
+          </div>
+        </article>
+
+        <article class="text-row text-row--soon">
+          <div class="text-row__link" role="group" aria-label="第三篇：待发布">
+            <span class="text-row__no">03</span>
+            <span>
+              <span class="text-row__title">下一期 · 待发布</span>
+              <span class="text-row__kind">Review · in progress</span>
+              <span class="text-row__excerpt">关于海女、重启人生与"普通生活到底有多大"的评论草稿。</span>
+            </span>
+            <span class="text-row__go">Soon</span>
+          </div>
+        </article>
+      </div>
+
+      <p class="texts__foot">
+        <span>全部文章首发于 Telegram 频道 <strong>圆圆是只可达鸭</strong>。</span>
+        <a class="btn btn--ghost" href="https://t.me/minecassis" target="_blank" rel="noopener noreferrer">Open the channel ↗</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- SCREEN -->
+  <section class="section section--night" id="screen" aria-labelledby="screenTitle">
+    <div class="container">
+      <div class="section__head">
+        <div>
+          <p class="section__no">§ 03 — Personal Screen Archive</p>
+          <h2 class="section__title" id="screenTitle">Screen<small>电影与日剧</small></h2>
+        </div>
+        <p class="section__aside">Filed by mood, not by rating. The things I return to when a normal day needs a different shape.</p>
+      </div>
+
+      <div class="filters" role="group" aria-label="按类型筛选">
+        <button class="filter" type="button" data-filter="all" aria-pressed="true">All</button>
+        <button class="filter" type="button" data-filter="jp" aria-pressed="false">Japanese Drama</button>
+        <button class="filter" type="button" data-filter="film" aria-pressed="false">Film</button>
+        <button class="filter" type="button" data-filter="bakeryhythm" aria-pressed="false">笨蛋节奏</button>
+        <button class="filter" type="button" data-filter="comfort" aria-pressed="false">Rewatch / Comfort</button>
+      </div>
+
+      <ul class="screens" id="screens">
+        <li class="screen-card" data-tags="jp comfort">
+          <p class="screen-card__kind">Japanese Drama</p>
+          <h3 class="screen-card__title">海女</h3>
+          <p class="screen-card__orig">あまちゃん · NHK 連続テレビ小説</p>
+          <p class="screen-card__year">2013</p>
+          <p class="screen-card__note">A bright, strange, deeply human story about belonging, performance, and the places that keep you. <span>北三陸の空気を部屋の中に作る方法。</span></p>
+        </li>
+        <li class="screen-card" data-tags="jp bakeryhythm comfort">
+          <p class="screen-card__kind">Japanese Drama</p>
+          <h3 class="screen-card__title">重启人生</h3>
+          <p class="screen-card__orig">ブラッシュアップライフ · 日本テレビ</p>
+          <p class="screen-card__year">2023 · Written by 笨蛋节奏</p>
+          <p class="screen-card__note">Ordinary lives, second chances, and dialogue so precisely timed it becomes music. Friendship treated as the main plot, not the subplot. <span>投胎のルールより、雑談の密度。</span></p>
+        </li>
+        <li class="screen-card" data-tags="jp bakeryhythm comfort">
+          <p class="screen-card__kind">Japanese Drama</p>
+          <h3 class="screen-card__title">热点</h3>
+          <p class="screen-card__orig">ホットスポット / THE HOT SPOT · 日本テレビ</p>
+          <p class="screen-card__year">2025 · Written by 笨蛋节奏 · St. 市川实日子</p>
+          <p class="screen-card__note">A single mother at a business hotel at the foot of Mt. Fuji discovers her quiet colleague is an alien — and negotiates with him at the level of "please don't make it weird". Adult pragmatism as comedy. <span>日常の問題を、非日常の力でそっと片付ける。</span></p>
+        </li>
+        <li class="screen-card" data-tags="jp comfort">
+          <p class="screen-card__kind">Japanese Drama</p>
+          <h3 class="screen-card__title">我的事说来话长</h3>
+          <p class="screen-card__orig">俺の話は長い · 日本テレビ</p>
+          <p class="screen-card__year">2019</p>
+          <p class="screen-card__note">A unemployed, endlessly articulate young man defends his own life — and is gently overruled by the family who feeds him. The best show about being stuck. <span>言い訳の才能と、その終わり方。</span></p>
+        </li>
+        <li class="screen-card" data-tags="film">
+          <p class="screen-card__kind">Film</p>
+          <h3 class="screen-card__title">沙丘</h3>
+          <p class="screen-card__orig">Dune: Part One · Part Two</p>
+          <p class="screen-card__year">2021 / 2024</p>
+          <p class="screen-card__note">Resource, prophecy, and family politics at a scale that makes individual choice look irrelevant. Watching it is mostly about the silence between the sound design. <span>システムの話としてのスペクタクル。</span></p>
+        </li>
+        <li class="screen-card" data-tags="film">
+          <p class="screen-card__kind">Film</p>
+          <h3 class="screen-card__title">银翼杀手 2049</h3>
+          <p class="screen-card__orig">Blade Runner 2049</p>
+          <p class="screen-card__year">2017</p>
+          <p class="screen-card__note">For the days when silence says more than dialogue. A procedural about evidence, memory, and being ordinary — which is the hardest thing to accept. <span>特別な存在ではない、という結末。</span></p>
+        </li>
+      </ul>
+      <p class="mono" style="margin-top:1.5rem;color:var(--ink-soft-on-night)" id="screenCount" aria-live="polite">6 titles shown</p>
+    </div>
+  </section>
+
+  <!-- SKILLS -->
+  <section class="section" id="skills" aria-labelledby="skillsTitle">
+    <div class="container">
+      <div class="section__head">
+        <div>
+          <p class="section__no">§ 04 — Capability Map</p>
+          <h2 class="section__title" id="skillsTitle">Skills<small>能力，按"我怎么工作"分组</small></h2>
+        </div>
+        <p class="section__aside">No skill clouds. These are four verbs, and everything else hangs off them.</p>
+      </div>
+
+      <div class="skills__grid">
+        <section class="skill-set" tabindex="0">
+          <h3 class="skill-set__name">Analyse</h3>
+          <p class="skill-set__zh">分析 / 看清结构</p>
+          <p class="skill-set__desc">Reading code, policy, and process for what they actually do rather than what they claim.</p>
+          <ul class="skill-set__list">
+            <li>SAST</li><li>Vulnerability Analysis</li><li>Risk Assessment</li><li>Threat Thinking</li><li>Triage</li>
+          </ul>
+        </section>
+        <section class="skill-set" tabindex="0">
+          <h3 class="skill-set__name">Operate</h3>
+          <p class="skill-set__zh">运营 / 让它落地</p>
+          <p class="skill-set__desc">Turning a requirement into a repeatable flow somebody can run on a busy week.</p>
+          <ul class="skill-set__list">
+            <li>Compliance Operations</li><li>Process Design</li><li>Evidence Management</li><li>Cross-team Coordination</li>
+          </ul>
+        </section>
+        <section class="skill-set" tabindex="0">
+          <h3 class="skill-set__name">Think</h3>
+          <p class="skill-set__zh">思考 / 法学与金融的底子</p>
+          <p class="skill-set__desc">Finance and law taught me to hold two contradictory frames at once and keep going.</p>
+          <ul class="skill-set__list">
+            <li>Legal Reasoning</li><li>Financial Analysis</li><li>Research Design</li><li>Structured Writing</li>
+          </ul>
+        </section>
+        <section class="skill-set" tabindex="0">
+          <h3 class="skill-set__name">Translate</h3>
+          <p class="skill-set__zh">翻译 / 跨语境</p>
+          <p class="skill-set__desc">The part that matters: making a technical risk legible to the person who has to sign for it.</p>
+          <ul class="skill-set__list">
+            <li>Explaining Technical Risk</li><li>Documentation</li><li>Policy ↔ Practice</li><li>Engineering ↔ Governance</li>
+          </ul>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABOUT -->
+  <section class="section section--tint" id="about" aria-labelledby="aboutTitle">
+    <div class="container">
+      <div class="section__head">
+        <div>
+          <p class="section__no">§ 05 — Contributors</p>
+          <h2 class="section__title" id="aboutTitle">About<small>关于 cass 与圆圆</small></h2>
+        </div>
+        <p class="section__aside">One editor, one supervising cat, a working list of unfinished drafts.</p>
+      </div>
+
+      <div class="about__grid">
+        <div>
+          <p class="about__lead">I work in security, but my way of thinking was shaped by finance and law.</p>
+          <div class="about__en">
+            <p>I'm interested in how systems distribute risk, how rules become practice, and how people make decisions inside structures that were never quite designed to hold.</p>
+            <p style="margin-top:.9rem">Outside work I write, watch Japanese dramas, revisit the same two or three films, and collect fragments of ordinary life before they lose their shape.</p>
+          </div>
+          <div class="about__zh">
+            <p>我现在从事安全分析，最初学的是金融和法律。它们共同决定了我看东西的方式：我关心系统如何分配风险，规则如何变成实践，以及人在一个并不完美的结构里怎样继续做决定。</p>
+            <p style="margin-top:.9rem">工作之外，我写作、看日剧、反复看同一几部电影，和一个极度可爱的中华田园猫一起生活。这个网站是我的个人档案馆——简历的一部分，杂志的一部分，还有很多部分暂时说不清。</p>
+          </div>
+        </div>
+
+        <aside class="about__side">
+          <div class="frame" role="img" aria-label="圆圆照片位（待上传）">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="7" cy="6.5" rx="2" ry="2.6"/><ellipse cx="12" cy="5" rx="2" ry="2.7"/><ellipse cx="17" cy="6.5" rx="2" ry="2.6"/><path d="M12 10c3.2 0 6 2.6 6 5.2 0 2.3-1.9 3.3-3.8 2.6-1.4-.5-3-.5-4.4 0-1.9.7-3.8-.3-3.8-2.6C6 12.6 8.8 10 12 10z"/></svg>
+            <p>圆圆 · 中华田园猫<br>photo slot — coming soon</p>
+          </div>
+          <h3>Colophon</h3>
+          <dl class="colophon">
+            <div><dt>Name</dt><dd>cass</dd></div>
+            <div><dt>GitHub</dt><dd>cassisisacat</dd></div>
+            <div><dt>Role</dt><dd>Security Analyst</dd></div>
+            <div><dt>Studied</dt><dd>Finance · Law</dd></div>
+            <div><dt>Cat</dt><dd>圆圆 (ZHTY)</dd></div>
+            <div><dt>Channel</dt><dd>圆圆是只可达鸭</dd></div>
+            <div><dt>Stack</dt><dd>HTML · CSS · JS</dd></div>
+            <div><dt>Hosted by</dt><dd>GitHub Pages</dd></div>
+          </dl>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTACT -->
+  <section class="section section--night contact" id="contact" aria-labelledby="contactTitle">
+    <div class="container">
+      <div class="section__head">
+        <div>
+          <p class="section__no">§ 06 — Correspondence</p>
+          <h2 class="section__title" id="contactTitle">Contact<small>联系</small></h2>
+        </div>
+        <p class="section__aside">Open to security &amp; compliance conversations, research collaboration, and anyone who wants to argue about 笨蛋节奏.</p>
+      </div>
+
+      <a class="contact__mail" href="mailto:hello@example.com" id="mail">hello@example.com</a>
+      <p class="contact__hint">← 记得把这行邮箱换成你自己的（GitHub Pages 上会公开显示，建议用一个专门收信地址）。</p>
+
+      <ul class="footer__links" style="margin-top:2.5rem">
+        <li><a href="https://t.me/minecassis" target="_blank" rel="noopener noreferrer">Telegram 频道 · 圆圆是只可达鸭 ↗</a></li>
+        <li><a href="https://github.com/cassisisacat" target="_blank" rel="noopener noreferrer">GitHub · cassisisacat ↗</a></li>
+        <li><a href="https://cassisisacat.github.io" target="_blank" rel="noopener noreferrer">cassisisacat.github.io ↗</a></li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer__grid">
+      <div>
+        <p class="mono" style="color:var(--ink-soft)">Vol. 01 — Field Notes</p>
+        <p style="font-family:var(--font-display);font-size:1.45rem;margin-top:.6rem">Systems, stories, and the spaces between.</p>
+      </div>
+      <div>
+        <p class="mono" style="color:var(--ink-soft)">Index</p>
+        <ul class="footer__links" style="margin-top:.7rem">
+          <li><a href="#" onclick="event.preventDefault();scrollToSection('now')">Now</a></li>
+          <li><a href="#" onclick="event.preventDefault();scrollToSection('writing')">Writing</a></li>
+          <li><a href="#" onclick="event.preventDefault();scrollToSection('screen')">Screen</a></li>
+          <li><a href="#" onclick="event.preventDefault();scrollToSection('skills')">Skills</a></li>
+          <li><a href="#" onclick="event.preventDefault();scrollToSection('about')">About</a></li>
+          <li><a href="#" onclick="event.preventDefault();scrollToSection('home')">Back to top ↑</a></li>
+        </ul>
+      </div>
+      <div>
+        <p class="mono" style="color:var(--ink-soft)">Supervision</p>
+        <p class="footer__cat" style="margin-top:.7rem">Edited with the strict oversight of one orange Chinese rural cat.</p>
+        <p style="font-size:.85rem;color:var(--ink-soft);margin-top:.5rem">本网站由一只中华田园猫进行过严格的编辑监督。</p>
+      </div>
+    </div>
+    <div class="footer__note">
+      <p class="mono">© 2026 cass · cassisisacat</p>
+      <p class="mono">No trackers · No cookies · Built by hand</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+function scrollToSection(id){
+  var el=document.getElementById(id);
+  if(!el)return;
+  var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  el.scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'});
+}
+function navGo(id){scrollToSection(id);closeMenu();}
+
+/* ── Scroll-aware masthead ─────────────────────────── */
+var masthead=document.getElementById('masthead');
+function onScroll(){masthead.classList.toggle('masthead--scrolled',window.scrollY>60);}
+window.addEventListener('scroll',onScroll,{passive:true});onScroll();
+
+/* ── Mobile menu ───────────────────────────────────── */
+var navToggle=document.getElementById('navToggle'),navList=document.getElementById('navList');
+function closeMenu(){navList.setAttribute('data-open','false');navToggle.setAttribute('aria-expanded','false');navToggle.textContent='Menu';}
+navToggle.addEventListener('click',function(){
+  var open=navList.getAttribute('data-open')==='true';
+  navList.setAttribute('data-open',open?'false':'true');
+  navToggle.setAttribute('aria-expanded',open?'false':'true');
+  navToggle.textContent=open?'Menu':'Close';
+});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeMenu();});
+
+/* ── Reveal on scroll ──────────────────────────────── */
+var revealTargets=document.querySelectorAll('.section__head, .hero__statement, .hero__zh, .hero__meta, .hero__actions, .now-item, .text-row, .screen-card, .skill-set, .about__grid > *, .contact__mail, .footer__grid > *');
+revealTargets.forEach(function(el,i){el.classList.add('reveal');el.style.setProperty('--i',(i%8));});
+if('IntersectionObserver' in window){
+  var io=new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      if(en.isIntersecting){en.target.classList.add('is-in');io.unobserve(en.target);}
+    });
+  },{threshold:0.12,rootMargin:'0px 0px -8% 0px'});
+  revealTargets.forEach(function(el){io.observe(el);});
+}else{revealTargets.forEach(function(el){el.classList.add('is-in');});}
+
+/* ── Active section in nav ─────────────────────────── */
+var navLinks=document.querySelectorAll('.nav__link[data-target]');
+var sections=Array.prototype.map.call(navLinks,function(l){return document.getElementById(l.dataset.target);}).filter(Boolean);
+if('IntersectionObserver' in window && sections.length){
+  var spy=new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      if(!en.isIntersecting)return;
+      navLinks.forEach(function(l){
+        var on=l.dataset.target===en.target.id;
+        if(on){l.setAttribute('aria-current','true');}else{l.removeAttribute('aria-current');}
+      });
+    });
+  },{threshold:0.05,rootMargin:'-45% 0px -50% 0px'});
+  sections.forEach(function(s){spy.observe(s);});
+}
+
+/* ── NOW accordion (accessible; click or keyboard) ─── */
+document.querySelectorAll('.now-item__btn').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    var item=btn.closest('.now-item');
+    var open=item.getAttribute('data-open')==='true';
+    document.querySelectorAll('.now-item').forEach(function(i){
+      i.setAttribute('data-open','false');
+      var b=i.querySelector('.now-item__btn');if(b)b.setAttribute('aria-expanded','false');
+    });
+    if(!open){item.setAttribute('data-open','true');btn.setAttribute('aria-expanded','true');}
+  });
+});
+
+/* ── SCREEN filter ─────────────────────────────────── */
+var filterBtns=document.querySelectorAll('.filter'),cards=document.querySelectorAll('.screen-card'),countEl=document.getElementById('screenCount');
+filterBtns.forEach(function(btn){
+  btn.addEventListener('click',function(){
+    var f=btn.dataset.filter,shown=0;
+    filterBtns.forEach(function(b){b.setAttribute('aria-pressed',b===btn?'true':'false');});
+    cards.forEach(function(card){
+      var tags=(card.dataset.tags||'').split(' ');
+      var match=f==='all'||tags.indexOf(f)>-1;
+      card.hidden=!match;
+      if(match){shown++;card.classList.add('is-in');}
+    });
+    if(countEl)countEl.textContent=shown+' title'+(shown===1?'':'s')+' shown';
+  });
+});
+
+/* ── Status line typewriter ────────────────────────── */
+var statusEl=document.getElementById('statusLine');
+var statuses=[
+  'a life between SAST, compliance, AI research, and one orange cat',
+  '安全分析 / 合规运营 / AI 协作研究 / 写作',
+  'rewatching 笨蛋节奏 for the third time',
+  'drafting the next essay in Telegram, as usual'
+];
+(function typeLoop(idx){
+  var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var text=statuses[idx%statuses.length];
+  if(reduce){
+    statusEl.innerHTML=text+'<span class="status__caret" aria-hidden="true">&nbsp;</span>';
+    setTimeout(function(){typeLoop(idx+1);},6000);return;
+  }
+  var i=0;
+  statusEl.innerHTML='<span class="status__caret" aria-hidden="true">&nbsp;</span>';
+  var caret=statusEl.querySelector('.status__caret');
+  function step(){
+    if(i<text.length){
+      caret.insertAdjacentText('beforebegin',text.charAt(i));i++;
+      setTimeout(step,42);
+    }else{
+      setTimeout(function(){typeLoop(idx+1);},5200);
+    }
+  }
+  setTimeout(step,900);
+})(0);
+
+/* ── Cat easter egg ────────────────────────────────── */
+var paw=document.getElementById('paw'),pawNote=document.getElementById('pawNote');
+var catLines=[
+  '圆圆：这一版排版可以，但字太小了。',
+  '圆圆：SAST 扫不出我藏在沙发底下的玩具。',
+  '圆圆：你又要熬夜写文章了，我知道。',
+  '圆圆：笨蛋节奏是最好的人类。',
+  '圆圆：我不认可这个配色。（她其实很喜欢）',
+  '圆圆：The compliance evidence is in the other room. Unavailable.',
+  '圆圆：明年搬到江边去吧，我说。',
+  '圆圆：My human reads code all day and calls it rest.'
+];
+var noteTimer=null;
+paw.addEventListener('click',function(){
+  pawNote.textContent=catLines[Math.floor(Math.random()*catLines.length)];
+  pawNote.setAttribute('data-open','true');
+  clearTimeout(noteTimer);
+  noteTimer=setTimeout(function(){pawNote.setAttribute('data-open','false');},4200);
+});
+paw.addEventListener('mouseenter',function(){if(!pawNote.textContent)pawNote.setAttribute('data-open','true');});
+paw.addEventListener('mouseleave',function(){if(!pawNote.textContent)pawNote.setAttribute('data-open','false');});
+
+/* ── Keyboard easter egg: press C for the cat ──────── */
+document.addEventListener('keydown',function(e){
+  if(e.target && /input|textarea/i.test(e.target.tagName))return;
+  if(e.metaKey||e.ctrlKey||e.altKey)return;
+  if(e.key==='c'||e.key==='C'){paw.click();}
+});
+</script>
+</body>
+</html>
